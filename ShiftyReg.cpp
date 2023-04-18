@@ -1,211 +1,207 @@
 #include "ShiftyReg.h"
 
+#define MAX_EXIT_4_REG	8
 
-
-SHIFTY_REG::~SHIFTY_REG()
+ShiftyReg::ShiftyReg(uint8_t DataPin, 
+				uint8_t ClockPin, 
+				uint8_t LatchPin, 
+				uint8_t OutPutEnablePin, 
+				uint8_t ClearRegPin,
+				uint8_t NShiftReg)
 {
-	delete [] shifRegRegisters;	
+	_dataPin = DataPin;
+	_clockPin = ClockPin;
+	_latchPin = LatchPin;
+	_outputEnablePin = OutputEnablePin;
+	_clearRegPin = ClearRegPin;
+	_numRegisters = NShiftReg;
+	_numberOfExits = _numRegisters * MAX_EXIT_4_REG;
 }
 
-void SHIFTY_REG::pulseClock()
+void ShiftyReg::_pulseClock()
 {
-	digitalWrite(clockPin, HIGH);
-	digitalWrite(clockPin, LOW);	
+	digitalWrite(_clockPin, HIGH);
+	digitalWrite(_clockPin, LOW);	
 }
 
-void SHIFTY_REG::pulseLatch()
+void ShiftyReg::_pulseLatch()
 {
-	digitalWrite(latchPin, HIGH);
-	digitalWrite(latchPin, LOW);	
+	digitalWrite(_latchPin, HIGH);
+	digitalWrite(_latchPin, LOW);	
 }
 
-void SHIFTY_REG::pulseClear()
+void ShiftyReg::_pulseClear()
 {
-	digitalWrite(clearRegPin, LOW);
-	digitalWrite(clearRegPin, HIGH);
+	digitalWrite(_clearRegPin, LOW);
+	digitalWrite(_clearRegPin, HIGH);
 }
 
-void SHIFTY_REG::begin(uint8_t DataPin, uint8_t ClockPin, uint8_t LatchPin,  uint8_t OutputEnablePin, uint8_t ClearRegPin, uint8_t NOutput, uint8_t NShiftReg)
+/* First exit is the most left */
+void ShiftyReg::_writeData(uint8_t Conf)
 {
-	dataPin = DataPin;
-	clockPin = ClockPin;
-	latchPin = LatchPin;
-	outputEnablePin = OutputEnablePin;
-	clearRegPin = ClearRegPin;
-	nRegisterExits = NShiftReg * 8;
-	numberOfExits = NOutput;
-	pinMode(dataPin, OUTPUT);
-	pinMode(clockPin, OUTPUT);
-	pinMode(latchPin, OUTPUT);
-	digitalWrite(clockPin, LOW);
-	digitalWrite(latchPin, LOW);
-	
-	if(outputEnablePin != NOT_DEFINED_PIN)
-	{
-		pinMode(outputEnablePin, OUTPUT);
-		digitalWrite(outputEnablePin, HIGH); // Active low
+	uint8_t Data = LOW;
+	int8_t Bit = MAX_EXIT_4_REG - 1;
+	while(Bit >= 0){
+		((Conf >> Bit) & 0x1) == 0x0 ? Data = LOW : Data = HIGH;
+		Bit--;
+		digitalWrite(_dataPin, Data);
+		_pulseClock();
 	}
-	if(clearRegPin != NOT_DEFINED_PIN)
-	{
-		pinMode(clearRegPin, OUTPUT);
-		digitalWrite(clearRegPin, HIGH);    // Active low
-	}
-	shifRegRegisters = new uint8_t [nRegisterExits];
-	if(!shifRegRegisters)
-	{
+}
+
+
+void ShiftyReg::_loadExitConf()
+{
+	if(!_initilized){
 		return;
 	}
-	for(int RegIndex = 0; RegIndex < nRegisterExits; RegIndex++)
+	for(uint8_t i = 0; i < _numRegisters; i++)
 	{
-		shifRegRegisters[RegIndex] = 0;
-		digitalWrite(dataPin, shifRegRegisters[RegIndex]);
-		pulseClock();
+		_writeData(_shiftRegExits[i]);
 	}
-	pulseLatch();
-	if(outputEnablePin != NOT_DEFINED_PIN)
-	{
-		pinMode(outputEnablePin, OUTPUT);
-		digitalWrite(outputEnablePin, LOW); // Active low
-	}
+	_pulseLatch();
 }
 
-bool SHIFTY_REG::setSingleExit(uint8_t WichExit, uint8_t State)
+void ShiftyReg::_updateBitConf(uint8_t RegNum, uint8_t NExit, uint8_t Value)
 {
-	if(WichExit < numberOfExits && (State == 0 || State == 1))
+	uint8_t NewVal = 0x00;
+	if(RegNum < _numRegisters && NExit < MAX_EXIT_4_REG - 1 && _initilized)
 	{
-		shifRegRegisters[numberOfExits - 1 - WichExit] = State;
-	}
-	else
-	{
-		return false;
-	}
-	return true;
-}
-
-bool SHIFTY_REG::loadSingleExit(uint8_t WichExit)
-{
-	if(WichExit < numberOfExits)
-	{
-		for(int j = 0; j < numberOfExits; j++)
+		NewVal = _shiftRegExits[RegNum];
+		switch (NExit)
 		{
-			if(j == WichExit)
-				digitalWrite(dataPin, shifRegRegisters[WichExit]);
-			else
-				digitalWrite(dataPin, LOW);
-			pulseClock();
+		case 0:
+			Value > 0 ? NewVal |= 0b00000001 : NewVal &= 0b11111110;
+			break;
+		case 1:
+			Value > 0 ? NewVal |= 0b00000010 : NewVal &= 0b11111101;
+			break;
+		case 2:
+			Value > 0 ? NewVal |= 0b00000100 : NewVal &= 0b11111011;
+			break;
+		case 3:
+			Value > 0 ? NewVal |= 0b00001000 : NewVal &= 0b11110111;
+			break;
+		case 4:
+			Value > 0 ? NewVal |= 0b00010000 : NewVal &= 0b11101111;
+			break;
+		case 5:
+			Value > 0 ? NewVal |= 0b00100000 : NewVal &= 0b11011111;	
+			break;
+		case 6:
+			Value > 0 ? NewVal |= 0b01000000 : NewVal &= 0b10111111;
+			break;						 
+		case 7:
+			Value > 0 ? NewVal |= 0b10000000 : NewVal &= 0b01111111;
+			break;			
+		default:
+			break;
 		}
-		pulseLatch();
+		_shiftRegExits[RegNum] = NewVal;
 	}
-	else
+}
+
+uint8_t ShiftyReg::_readBitConf(uint8_t RegNum, uint8_t NExit)
+{
+	uint8_t Ret = 0;
+	if(RegNum < _numRegisters && NExit < MAX_EXIT_4_REG - 1 && _initilized)
 	{
+		Ret = (uint8_t)((_shiftRegExits[RegNum] >> NExit) & 0x1);
+	}
+	return Ret;
+}
+
+void ShiftyReg::begin()
+{
+	_shiftRegExits = new uint8_t[_numRegisters];
+
+	pinMode(_dataPin, OUTPUT);
+	pinMode(_clockPin, OUTPUT);
+	pinMode(_latchPin, OUTPUT);
+	digitalWrite(_clockPin, LOW);
+	digitalWrite(_latchPin, LOW);
+	
+	if(_outputEnablePin != NOT_DEFINED_PIN)
+	{
+		pinMode(_outputEnablePin, OUTPUT);
+		digitalWrite(_outputEnablePin, HIGH); // Active low
+	}
+	if(_clearRegPin != NOT_DEFINED_PIN)
+	{
+		pinMode(_clearRegPin, OUTPUT);
+		digitalWrite(_clearRegPin, HIGH);    // Active low
+	}
+
+	if(_outputEnablePin != NOT_DEFINED_PIN)
+	{
+		pinMode(_outputEnablePin, OUTPUT);
+		digitalWrite(_outputEnablePin, LOW); // Active low
+	}
+	_initilized = true;
+}
+
+
+bool ShiftyReg::clear()
+{
+	if(!_initilized){
 		return false;
 	}
+	_pulseClear();
+	_pulseLatch();
 	return true;
 }
 
-bool SHIFTY_REG::setAllExit(uint8_t *StateArray)
+bool ShiftyReg::setExit(uint8_t ExitNumber, uint8_t Value)
 {
-	for(int i = 0; i < numberOfExits; i++)
-	{
-		if((StateArray + i) != NULL)
-			shifRegRegisters[numberOfExits - 1 - i] = StateArray[i];
-	}
-	return true;
-}
-
-
-bool SHIFTY_REG::setAndLoadSingleExit(uint8_t WichExit, uint8_t State)
-{
-	if(WichExit < numberOfExits)
-	{
-		shifRegRegisters[numberOfExits - 1 - WichExit] = State;
-		for(int j = 0; j < numberOfExits; j++)
-		{
-			if(j == WichExit)
-				digitalWrite(dataPin, shifRegRegisters[WichExit]);
-			else
-				digitalWrite(dataPin, LOW);
-			pulseClock();
-		}
-		pulseLatch();
-	}
-	else
-	{
+	bool ExitSetted = false;
+	if(ExitNumber > _numberOfExits){
 		return false;
 	}
-	return true;
+	_updateBitConf(ExitNumber / MAX_EXIT_4_REG, ExitNumber % MAX_EXIT_4_REG, Value);
+	_loadExitConf();
+	ExitSetted = true;
+	return ExitSetted;
 }
 
-bool SHIFTY_REG::loadAllExit()
+uint8_t ShiftyReg::getExit(uint8_t ExitNumber)
 {
-	for(int j = 0; j < numberOfExits; j++)
-	{
-		digitalWrite(dataPin, shifRegRegisters[j]);
-		pulseClock();
-	}	
-	pulseLatch();
-	return true;
+	return (_readBitConf(ExitNumber / MAX_EXIT_4_REG, ExitNumber % MAX_EXIT_4_REG));
 }
 
-bool SHIFTY_REG::loadAllExit(uint8_t State)
+bool ShiftyReg::toggleExit(uint8_t ExitNumber)
 {
-	if(State == 0 || State == 1)
-	{
-		for(int j = 0; j < numberOfExits; j++)
-		{
-			shifRegRegisters[numberOfExits - 1 - j] = State;
-			digitalWrite(dataPin, shifRegRegisters[j]);
-			pulseClock();
-		}	
-		pulseLatch();
+	bool Ret = false;
+	if(getExit(ExitNumber) == 0){
+		Ret = setExit(ExitNumber, 1);
+	} else {
+		Ret = setExit(ExitNumber, 0);
 	}
-	else
+	return Ret;
+}
+
+bool ShiftyReg::setGroupOfExits(uint8_t *Exits, uint8_t NExits, uint8_t Value)
+{
+	if(!Exits){
 		return false;
-	return true;
-}
-
-
-uint8_t SHIFTY_REG::getSingleExit(uint8_t WichExit)
-{
-	if(WichExit < numberOfExits)
-	{
-		return shifRegRegisters[numberOfExits - 1 - WichExit];
 	}
-	else 
-		return 0;
-}
-
-
-void SHIFTY_REG::getAllExit(uint8_t *ExitsArray)
-{
-	for(int i = 0; i < numberOfExits; i++)
+	for(int i = 0; i < NExits; i++)
 	{
-		if((ExitsArray + i) != NULL)
-		{
-			ExitsArray[i] = shifRegRegisters[numberOfExits - 1 - i];
-		}
+		setExit(Exits[i], Value);
 	}
 }
 
-bool SHIFTY_REG::clear()
+void ShiftyReg::noOutput()
 {
-	for(int j = 0; j < numberOfExits; j++)
-	{
-		shifRegRegisters[j] = 0;
-	}	
-	pulseClear();
-	pulseLatch();
-	return true;
+	if(_initilized){
+		digitalWrite(_outputEnablePin, HIGH);
+	}
 }
 
-void SHIFTY_REG::noOutput()
+void ShiftyReg::noOutput(uint16_t AmountOfTime)
 {
-	digitalWrite(outputEnablePin, HIGH);
-}
-
-void SHIFTY_REG::noOutput(uint16_t AmountOfTime)
-{
-	digitalWrite(outputEnablePin, HIGH);
-	delay(AmountOfTime);
-	digitalWrite(outputEnablePin, LOW);
+	if(_initilized){
+		digitalWrite(_outputEnablePin, HIGH);
+		delay(AmountOfTime);
+		digitalWrite(_outputEnablePin, LOW);
+	}
 }
