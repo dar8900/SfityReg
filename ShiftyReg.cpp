@@ -12,7 +12,7 @@ ShiftyReg::ShiftyReg(uint8_t DataPin,
 	_dataPin = DataPin;
 	_clockPin = ClockPin;
 	_latchPin = LatchPin;
-	_outputEnablePin = OutputEnablePin;
+	_outputEnablePin = OutPutEnablePin;
 	_clearRegPin = ClearRegPin;
 	_numRegisters = NShiftReg;
 	_numberOfExits = _numRegisters * MAX_EXIT_4_REG;
