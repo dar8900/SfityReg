@@ -19,8 +19,32 @@ class ShiftyReg
 	
 		void begin();
 		bool clear();
+
+		/**
+		* @brief Set the exit (from 1 to 8 for one shift register etc...)
+		* 
+		* @param uint8_t ExitNumber 
+		* @param  uint8_t Value 
+		* @return true 
+		* @return false 
+		*/
 		bool setExit(uint8_t ExitNumber, uint8_t Value);
+
+		/**
+		* @brief Get the exit value (from 1 to 8 for one shift register etc...)
+		* 
+		* @param uint8_tExitNumber
+		* @return uint8_t 
+		*/
 		uint8_t getExit(uint8_t ExitNumber);
+
+		/**
+		 * @brief Toggle the exit (from 1 to 8 for one shift register etc...)
+		 * 
+		 * @param uint8_t ExitNumber 
+		 * @return true 
+		 * @return false 
+		 */
 		bool toggleExit(uint8_t ExitNumber);
 		bool setGroupOfExits(uint8_t *Exits, uint8_t NExits, uint8_t Value);
 		void noOutput();

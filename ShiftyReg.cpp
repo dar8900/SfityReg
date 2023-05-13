@@ -65,7 +65,7 @@ void ShiftyReg::_loadExitConf()
 void ShiftyReg::_updateBitConf(uint8_t RegNum, uint8_t NExit, uint8_t Value)
 {
 	uint8_t NewVal = 0x00;
-	if(RegNum < _numRegisters && NExit < MAX_EXIT_4_REG - 1 && _initilized)
+	if(RegNum < _numRegisters && NExit < MAX_EXIT_4_REG && _initilized)
 	{
 		NewVal = _shiftRegExits[RegNum];
 		switch (NExit)
@@ -104,7 +104,7 @@ void ShiftyReg::_updateBitConf(uint8_t RegNum, uint8_t NExit, uint8_t Value)
 uint8_t ShiftyReg::_readBitConf(uint8_t RegNum, uint8_t NExit)
 {
 	uint8_t Ret = 0;
-	if(RegNum < _numRegisters && NExit < MAX_EXIT_4_REG - 1 && _initilized)
+	if(RegNum < _numRegisters && NExit < MAX_EXIT_4_REG && _initilized)
 	{
 		Ret = (uint8_t)((_shiftRegExits[RegNum] >> NExit) & 0x1);
 	}
@@ -151,9 +151,13 @@ bool ShiftyReg::clear()
 	return true;
 }
 
+
 bool ShiftyReg::setExit(uint8_t ExitNumber, uint8_t Value)
 {
 	bool ExitSetted = false;
+	if(ExitNumber > 0){
+		ExitNumber = ExitNumber - 1;
+	}
 	if(ExitNumber > _numberOfExits){
 		return false;
 	}
@@ -163,8 +167,12 @@ bool ShiftyReg::setExit(uint8_t ExitNumber, uint8_t Value)
 	return ExitSetted;
 }
 
+
 uint8_t ShiftyReg::getExit(uint8_t ExitNumber)
 {
+	if(ExitNumber > 0){
+		ExitNumber = ExitNumber - 1;
+	}
 	return (_readBitConf(ExitNumber / MAX_EXIT_4_REG, ExitNumber % MAX_EXIT_4_REG));
 }
 
