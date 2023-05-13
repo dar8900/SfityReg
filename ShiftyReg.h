@@ -49,6 +49,7 @@ class ShiftyReg
 		bool setGroupOfExits(uint8_t *Exits, uint8_t NExits, uint8_t Value);
 		void noOutput();
 		void noOutput(uint16_t AmountOfTime);
+		uint8_t getMaxNumOfExits();
 	
 	
 	private:

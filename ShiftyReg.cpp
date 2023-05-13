@@ -213,3 +213,9 @@ void ShiftyReg::noOutput(uint16_t AmountOfTime)
 		digitalWrite(_outputEnablePin, LOW);
 	}
 }
+
+
+uint8_t ShiftyReg::getMaxNumOfExits()
+{
+	return _numberOfExits;
+}
