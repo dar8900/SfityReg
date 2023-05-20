@@ -164,7 +164,7 @@ bool ShiftyReg::setExit(uint8_t ExitNumber, uint8_t Value)
 	if(ExitNumber > _numberOfExits){
 		return false;
 	}
-	_updateBitConf(ExitNumber / MAX_EXIT_4_REG, ExitNumber % MAX_EXIT_4_REG, Value);
+	_updateBitConf(_numRegisters - (ExitNumber / MAX_EXIT_4_REG) - 1, ExitNumber % MAX_EXIT_4_REG, Value);
 	_loadExitConf();
 	ExitSetted = true;
 	return ExitSetted;
@@ -176,7 +176,7 @@ uint8_t ShiftyReg::getExit(uint8_t ExitNumber)
 	if(ExitNumber > 0){
 		ExitNumber = ExitNumber - 1;
 	}
-	return (_readBitConf(ExitNumber / MAX_EXIT_4_REG, ExitNumber % MAX_EXIT_4_REG));
+	return (_readBitConf(_numRegisters - (ExitNumber / MAX_EXIT_4_REG) - 1, ExitNumber % MAX_EXIT_4_REG));
 }
 
 bool ShiftyReg::toggleExit(uint8_t ExitNumber)
