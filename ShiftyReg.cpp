@@ -148,7 +148,7 @@ bool ShiftyReg::clear()
 	}
 	_pulseClear();
 	_pulseLatch();
-	for(ssize_t reg = 0; reg < _numRegisters; reg++){
+	for(size_t reg = 0; reg < _numRegisters; reg++){
 		_shiftRegExits[reg] = 0;
 	}
 	return true;
